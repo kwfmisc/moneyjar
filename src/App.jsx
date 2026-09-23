@@ -26,7 +26,15 @@ function App() {
   const [contributions, setContributions] = useState(() => {
     try {
       const saved = window.localStorage.getItem(contributionsStorageKey)
-      return saved ? JSON.parse(saved) : []
+      if (saved) return JSON.parse(saved)
+
+      const legacy = window.localStorage.getItem('money-jar-contributions')
+      if (!legacy) return []
+      return JSON.parse(legacy).filter((item) => !(
+        (item.amount === 240 && item.date === '2026-09-14' && item.person === 'Maya') ||
+        (item.amount === 180 && item.date === '2026-09-09' && item.person === 'Jordan') ||
+        (item.amount === 125 && item.date === '2026-08-29' && item.person === 'Sam')
+      ))
     } catch {
       return []
     }
