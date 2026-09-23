@@ -7,7 +7,7 @@ function doGet(event) {
     const sheet = getSheet_()
     sheet.appendRow([contribution.id, contribution.amount, contribution.date, contribution.person, new Date()])
     if (parameters.goal) PropertiesService.getScriptProperties().setProperty('goal', String(parameters.goal))
-    return json_({ ok: true })
+    return json_({ ok: true }, parameters.callback)
   }
 
   if (parameters.action === 'delete' && parameters.id) {
@@ -19,7 +19,7 @@ function doGet(event) {
         break
       }
     }
-    return json_({ ok: true })
+    return json_({ ok: true }, parameters.callback)
   }
 
   const sheet = getSheet_()
@@ -35,7 +35,7 @@ function doGet(event) {
   return json_({
     goal: PropertiesService.getScriptProperties().getProperty('goal') || '',
     contributions,
-  })
+  }, parameters.callback)
 }
 
 function doPost(event) {
@@ -85,6 +85,9 @@ function formatDate_(value) {
   return String(value)
 }
 
-function json_(value) {
+function json_(value, callback) {
+  if (callback && /^[A-Za-z_$][\w$]*$/.test(callback)) {
+    return ContentService.createTextOutput(`${callback}(${JSON.stringify(value)})`).setMimeType(ContentService.MimeType.JAVASCRIPT)
+  }
   return ContentService.createTextOutput(JSON.stringify(value)).setMimeType(ContentService.MimeType.JSON)
 }

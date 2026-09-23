@@ -5,16 +5,34 @@ const contributionsStorageKey = 'money-jar-contributions-v2'
 const goalStorageKey = 'money-jar-goal-v2'
 const sheetsUrl = import.meta.env.VITE_SHEETS_WEB_APP_URL || 'https://script.google.com/macros/s/AKfycbzIvbNtHwEWvNKd2CWE6xTDFkWjQPv2TMK3YaO4Od6JPdAPzeIh-a-C-UkjKjYv0DoH/exec'
 
-function saveToSheets(payload) {
+function requestSheets(payload, onData) {
   if (!sheetsUrl) return
+  const callbackName = `moneyJarCallback_${Date.now()}_${Math.random().toString(36).slice(2)}`
   const query = new URLSearchParams({
-    action: payload.action,
+    action: payload?.action || '',
     id: payload.id ? String(payload.id) : '',
     goal: payload.goal ? String(payload.goal) : '',
     contribution: payload.contribution ? JSON.stringify(payload.contribution) : '',
+    callback: callbackName,
     cacheBust: String(Date.now()),
   })
-  fetch(`${sheetsUrl}?${query.toString()}`).catch(() => {})
+  const script = document.createElement('script')
+  window[callbackName] = (data) => {
+    if (onData) onData(data)
+    delete window[callbackName]
+    script.remove()
+  }
+  script.async = true
+  script.src = `${sheetsUrl}?${query.toString()}`
+  script.onerror = () => {
+    delete window[callbackName]
+    script.remove()
+  }
+  document.body.appendChild(script)
+}
+
+function saveToSheets(payload) {
+  requestSheets(payload)
 }
 
 function formatMoney(value) {
@@ -62,13 +80,10 @@ function App() {
     if (goal) window.localStorage.setItem(goalStorageKey, String(goal))
     if (!sheetsUrl) return
 
-    fetch(sheetsUrl)
-      .then((response) => response.json())
-      .then((data) => {
-        if (Array.isArray(data.contributions)) setContributions(data.contributions)
-        if (data.goal) setGoal(Number(data.goal))
-      })
-      .catch(() => {})
+    requestSheets({}, (data) => {
+      if (Array.isArray(data.contributions)) setContributions(data.contributions)
+      if (data.goal) setGoal(Number(data.goal))
+    })
   }, [])
 
   const total = useMemo(() => contributions.reduce((sum, item) => sum + item.amount, 0), [contributions])
