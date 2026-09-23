@@ -1,6 +1,27 @@
 const SHEET_NAME = 'Contributions'
 
-function doGet() {
+function doGet(event) {
+  const parameters = event && event.parameter ? event.parameter : {}
+  if (parameters.action === 'add' && parameters.contribution) {
+    const contribution = JSON.parse(parameters.contribution)
+    const sheet = getSheet_()
+    sheet.appendRow([contribution.id, contribution.amount, contribution.date, contribution.person, new Date()])
+    if (parameters.goal) PropertiesService.getScriptProperties().setProperty('goal', String(parameters.goal))
+    return json_({ ok: true })
+  }
+
+  if (parameters.action === 'delete' && parameters.id) {
+    const sheet = getSheet_()
+    const rows = sheet.getDataRange().getValues()
+    for (let index = rows.length - 1; index > 0; index -= 1) {
+      if (String(rows[index][0]) === String(parameters.id)) {
+        sheet.deleteRow(index + 1)
+        break
+      }
+    }
+    return json_({ ok: true })
+  }
+
   const sheet = getSheet_()
   const values = sheet.getDataRange().getValues()
   const rows = values.slice(1).filter((row) => row[0] !== '')

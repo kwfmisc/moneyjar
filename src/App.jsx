@@ -7,9 +7,14 @@ const sheetsUrl = import.meta.env.VITE_SHEETS_WEB_APP_URL || 'https://script.goo
 
 function saveToSheets(payload) {
   if (!sheetsUrl) return
-  const body = new Blob([JSON.stringify(payload)], { type: 'text/plain' })
-  if (navigator.sendBeacon && navigator.sendBeacon(sheetsUrl, body)) return
-  fetch(sheetsUrl, { method: 'POST', mode: 'no-cors', body }).catch(() => {})
+  const query = new URLSearchParams({
+    action: payload.action,
+    id: payload.id ? String(payload.id) : '',
+    goal: payload.goal ? String(payload.goal) : '',
+    contribution: payload.contribution ? JSON.stringify(payload.contribution) : '',
+    cacheBust: String(Date.now()),
+  })
+  fetch(`${sheetsUrl}?${query.toString()}`).catch(() => {})
 }
 
 function formatMoney(value) {
