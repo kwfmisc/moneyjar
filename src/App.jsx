@@ -5,6 +5,16 @@ const contributionsStorageKey = 'money-jar-contributions-v2'
 const goalStorageKey = 'money-jar-goal-v2'
 const sheetsUrl = import.meta.env.VITE_SHEETS_WEB_APP_URL || 'https://script.google.com/macros/s/AKfycbzIvbNtHwEWvNKd2CWE6xTDFkWjQPv2TMK3YaO4Od6JPdAPzeIh-a-C-UkjKjYv0DoH/exec'
 
+function saveToSheets(payload) {
+  if (!sheetsUrl) return
+  fetch(sheetsUrl, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload),
+  }).catch(() => {})
+}
+
 function formatMoney(value) {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -71,7 +81,7 @@ function App() {
 
     const contribution = { id: Date.now(), amount, date: form.date, person: form.person.trim() }
     setContributions((current) => [contribution, ...current])
-    if (sheetsUrl) fetch(sheetsUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'add', contribution, goal }) }).catch(() => {})
+    saveToSheets({ action: 'add', contribution, goal })
     setForm({ amount: '', date: new Date().toISOString().slice(0, 10), person: '' })
     setSaved(true)
     window.setTimeout(() => setSaved(false), 2200)
@@ -79,7 +89,7 @@ function App() {
 
   function removeContribution(id) {
     setContributions((current) => current.filter((item) => item.id !== id))
-    if (sheetsUrl) fetch(sheetsUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'delete', id }) }).catch(() => {})
+    saveToSheets({ action: 'delete', id })
   }
 
   return (
