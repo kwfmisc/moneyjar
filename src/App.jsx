@@ -44,11 +44,15 @@ function formatMoney(value) {
 }
 
 function formatDate(value) {
+  const dateValue = String(value).includes('T') || String(value).includes('GMT')
+    ? new Date(value)
+    : new Date(`${value}T12:00:00`)
+  if (Number.isNaN(dateValue.getTime())) return String(value)
   return new Intl.DateTimeFormat('en-US', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
-  }).format(new Date(`${value}T12:00:00`))
+  }).format(dateValue)
 }
 
 function App() {
