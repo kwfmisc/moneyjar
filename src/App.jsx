@@ -3,7 +3,7 @@ import { ArrowUpRight, CalendarDays, Check, Coins, Plus, Trash2, Users } from 'l
 
 const contributionsStorageKey = 'money-jar-contributions-v2'
 const goalStorageKey = 'money-jar-goal-v2'
-const sheetsUrl = import.meta.env.VITE_SHEETS_WEB_APP_URL || 'https://script.google.com/macros/s/AKfycbzIvbNtHwEWvNKd2CWE6xTDFkWjQPv2TMK3YaO4Od6JPdAPzeIh-a-C-UkjKjYv0DoH/exec'
+const sheetsUrl = 'https://script.google.com/macros/s/AKfycbzIvbNtHwEWvNKd2CWE6xTDFkWjQPv2TMK3YaO4Od6JPdAPzeIh-a-C-UkjKjYv0DoH/exec'
 
 function requestSheets(payload, onData) {
   if (!sheetsUrl) return
