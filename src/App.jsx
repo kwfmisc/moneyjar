@@ -1,11 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ArrowUpRight, CalendarDays, Check, Coins, Plus, Trash2, Users } from 'lucide-react'
 
-const starterContributions = [
-  { id: 1, amount: 240, date: '2026-09-14', person: 'Maya' },
-  { id: 2, amount: 180, date: '2026-09-09', person: 'Jordan' },
-  { id: 3, amount: 125, date: '2026-08-29', person: 'Sam' },
-]
+const contributionsStorageKey = 'money-jar-contributions-v2'
+const goalStorageKey = 'money-jar-goal-v2'
+const sheetsUrl = import.meta.env.VITE_SHEETS_WEB_APP_URL || ''
 
 function formatMoney(value) {
   return new Intl.NumberFormat('en-US', {
@@ -24,21 +22,34 @@ function formatDate(value) {
 }
 
 function App() {
-  const [goal, setGoal] = useState(1000)
+  const [goal, setGoal] = useState(() => Number(window.localStorage.getItem(goalStorageKey)) || '')
   const [contributions, setContributions] = useState(() => {
     try {
-      const saved = window.localStorage.getItem('money-jar-contributions')
-      return saved ? JSON.parse(saved) : starterContributions
+      const saved = window.localStorage.getItem(contributionsStorageKey)
+      return saved ? JSON.parse(saved) : []
     } catch {
-      return starterContributions
+      return []
     }
   })
   const [form, setForm] = useState({ amount: '', date: new Date().toISOString().slice(0, 10), person: '' })
   const [saved, setSaved] = useState(false)
 
   useEffect(() => {
-    window.localStorage.setItem('money-jar-contributions', JSON.stringify(contributions))
+    window.localStorage.setItem(contributionsStorageKey, JSON.stringify(contributions))
   }, [contributions])
+
+  useEffect(() => {
+    if (goal) window.localStorage.setItem(goalStorageKey, String(goal))
+    if (!sheetsUrl) return
+
+    fetch(sheetsUrl)
+      .then((response) => response.json())
+      .then((data) => {
+        if (Array.isArray(data.contributions)) setContributions(data.contributions)
+        if (data.goal) setGoal(Number(data.goal))
+      })
+      .catch(() => {})
+  }, [])
 
   const total = useMemo(() => contributions.reduce((sum, item) => sum + item.amount, 0), [contributions])
   const progress = goal > 0 ? (total / goal) * 100 : 0
@@ -50,10 +61,9 @@ function App() {
     const amount = Number(form.amount)
     if (!amount || amount <= 0 || !form.person.trim() || !form.date) return
 
-    setContributions((current) => [
-      { id: Date.now(), amount, date: form.date, person: form.person.trim() },
-      ...current,
-    ])
+    const contribution = { id: Date.now(), amount, date: form.date, person: form.person.trim() }
+    setContributions((current) => [contribution, ...current])
+    if (sheetsUrl) fetch(sheetsUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'add', contribution, goal }) }).catch(() => {})
     setForm({ amount: '', date: new Date().toISOString().slice(0, 10), person: '' })
     setSaved(true)
     window.setTimeout(() => setSaved(false), 2200)
@@ -61,6 +71,7 @@ function App() {
 
   function removeContribution(id) {
     setContributions((current) => current.filter((item) => item.id !== id))
+    if (sheetsUrl) fetch(sheetsUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'delete', id }) }).catch(() => {})
   }
 
   return (
@@ -86,7 +97,7 @@ function App() {
             <div className="stat-divider" />
             <div>
               <span className="stat-label">To goal</span>
-              <strong>{remaining > 0 ? formatMoney(remaining) : 'Goal reached!'}</strong>
+              <strong>{goal ? (remaining > 0 ? formatMoney(remaining) : 'Goal reached!') : 'Set a goal'}</strong>
             </div>
           </div>
         </div>
@@ -110,7 +121,7 @@ function App() {
             </div>
           </div>
           <div className="jar-base" />
-          <div className="jar-caption"><strong>{Math.round(progress)}%</strong><span>of your goal</span></div>
+          <div className="jar-caption"><strong>{goal ? `${Math.round(progress)}%` : '--'}</strong><span>{goal ? 'of your goal' : 'set a goal'}</span></div>
         </div>
       </section>
 
@@ -146,7 +157,7 @@ function App() {
               <p className="section-kicker">The full picture</p>
               <h2>Contributions</h2>
             </div>
-            <div className="goal-control"><label htmlFor="goal">Goal</label><div><span>$</span><input id="goal" type="number" min="1" value={goal} onChange={(event) => setGoal(Number(event.target.value) || 0)} /></div></div>
+            <div className="goal-control"><label htmlFor="goal">Goal</label><div><span>$</span><input id="goal" type="number" min="1" placeholder="Set goal" value={goal} onChange={(event) => { const nextGoal = Number(event.target.value) || ''; setGoal(nextGoal); if (nextGoal) window.localStorage.setItem(goalStorageKey, String(nextGoal)) }} /></div></div>
           </div>
           <div className="contribution-list">
             {contributions.length === 0 ? <div className="empty-state">Your first contribution starts the story.</div> : contributions.map((item) => (
@@ -158,7 +169,7 @@ function App() {
               </div>
             ))}
           </div>
-          <div className="progress-footer"><div className="progress-meta"><span>Progress toward {formatMoney(goal)}</span><strong>{Math.round(progress)}%</strong></div><div className="progress-track"><div className="progress-bar" style={{ width: `${Math.min(progress, 100)}%` }} /></div>{progress > 100 && <p className="over-goal">You are {formatMoney(total - goal)} over goal. Keep going.</p>}</div>
+          <div className="progress-footer"><div className="progress-meta"><span>{goal ? `Progress toward ${formatMoney(goal)}` : 'Enter a goal to track progress'}</span><strong>{goal ? `${Math.round(progress)}%` : '--'}</strong></div><div className="progress-track"><div className="progress-bar" style={{ width: `${Math.min(progress, 100)}%` }} /></div>{progress > 100 && <p className="over-goal">You are {formatMoney(total - goal)} over goal. Keep going.</p>}</div>
         </div>
       </section>
       <footer><span>Built for shared wins.</span><span>{contributions.length} {contributions.length === 1 ? 'contribution' : 'contributions'} logged</span></footer>
